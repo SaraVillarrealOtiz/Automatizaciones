@@ -38,6 +38,21 @@ function formatearFechaBogota(fecha) {
   return fecha.toLocaleDateString('es-CO', { timeZone: 'America/Bogota', day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 
+function mensajeBienvenida() {
+  return `👋 ¡Hola! Soy *ContaLia*, tu asistente para asignar tareas del equipo.
+
+Para crear una tarea necesito estos datos mínimos:
+
+📝 Tarea (qué hay que hacer)
+👤 Responsable (nombre de la persona)
+🏢 Cliente
+📅 Fecha límite
+🚦 Urgencia (Alta, Media o Baja)
+📌 Descripción
+
+Puedes escribirlo todo en un solo mensaje o ir respondiendo mis preguntas paso a paso. (El tiempo estimado es opcional.)`;
+}
+
 function mensajeConfirmacion(resuelto) {
   return `✅ *Tarea asignada correctamente*
 
@@ -96,6 +111,24 @@ async function procesarMensajeEntrante(mensaje, nombreSolicitante) {
   }
 
   const camposExtraidos = await extraerCampos(texto, conversacion.borrador, conversacion.campoPendiente);
+
+  // Saludo puro en el primer mensaje de una conversacion nueva (no trae ningun dato de
+  // tarea): se presenta ContaLia y se listan los campos minimos, en vez de lanzar
+  // directo la pregunta puntual de "tarea". Si el primer mensaje ya trae datos de la
+  // tarea, se omite el saludo y se sigue directo con la validacion de lo que falte.
+  const esConversacionNueva = Object.keys(conversacion.borrador).length === 0;
+  const noExtrajoNingunCampo = Object.values(camposExtraidos).every((v) => !v);
+  if (esConversacionNueva && noExtrajoNingunCampo) {
+    const conversacionSaludo = agregarAlHistorial(
+      { ...conversacion, estado: 'recolectando', campoPendiente: null },
+      'usuario',
+      texto
+    );
+    await guardarConversacion(telefono, conversacionSaludo);
+    await enviarMensajeTexto(telefono, mensajeBienvenida());
+    return;
+  }
+
   const borradorCombinado = combinarBorradorCrudo(conversacion.borrador, camposExtraidos);
   borradorCombinado.adjuntos = conversacion.borrador.adjuntos || [];
 
