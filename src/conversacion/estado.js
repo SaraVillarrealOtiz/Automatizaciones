@@ -9,6 +9,7 @@ const ESTADO_INICIAL = {
   ultimaActualizacion: null,
   historial: [],
   nombreSolicitante: null,
+  campoPendiente: null,
 };
 
 async function obtenerConversacion(telefono) {

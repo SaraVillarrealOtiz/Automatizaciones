@@ -95,7 +95,7 @@ async function procesarMensajeEntrante(mensaje, nombreSolicitante) {
     return;
   }
 
-  const camposExtraidos = await extraerCampos(texto, conversacion.borrador);
+  const camposExtraidos = await extraerCampos(texto, conversacion.borrador, conversacion.campoPendiente);
   const borradorCombinado = combinarBorradorCrudo(conversacion.borrador, camposExtraidos);
   borradorCombinado.adjuntos = conversacion.borrador.adjuntos || [];
 
@@ -106,6 +106,7 @@ async function procesarMensajeEntrante(mensaje, nombreSolicitante) {
 
   if (!resultado.valido) {
     conversacionActualizada.estado = 'recolectando';
+    conversacionActualizada.campoPendiente = resultado.campoPendiente;
     await guardarConversacion(telefono, conversacionActualizada);
     await enviarMensajeTexto(telefono, resultado.mensaje);
     return;

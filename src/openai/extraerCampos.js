@@ -43,18 +43,23 @@ Reglas estrictas:
 - Excepción puntual para "tarea" (título): si el usuario no da un título corto explícito pero sí describe la tarea con suficiente detalle, SÍ debes generar tú un título corto que resuma esa descripción (no lo dejes null solo porque no vino etiquetado). Ejemplo: si dice "que solicite los extractos bancarios", el título puede ser "Solicitar extractos bancarios". Si no hay ni título ni descripción de la que resumir, ahí sí deja tarea en null.
 - No confundas "tiempo estimado" (duración, ej. "2 horas", "medio día") con "fecha límite" (una fecha/día concreto, ej. "mañana", "viernes", "20 de julio").
 - Si hay un mensaje anterior de esta misma conversación (borrador previo) provisto como contexto, y el usuario ahora solo está respondiendo a un campo puntual que se le pidió, extrae ese campo del nuevo mensaje; no repitas ni alteres los demás campos del borrador (el sistema los combina después).
+- Si el contexto indica que el sistema le acaba de preguntar puntualmente por un campo específico (ver "Campo que se le acaba de preguntar al usuario"), y el mensaje nuevo no contiene una etiqueta explícita de otro campo (ej. "Cliente:", "Responsable:"), interpreta el mensaje completo como la respuesta a ESE campo puntual, incluso si el texto por sí solo podría sonar como otro campo (ej. si se preguntó por la descripción y el usuario repite algo parecido al título, va en descripción, no en tarea).
 - Devuelve los valores de urgencia y fechas tal como los dijo el usuario, en texto plano, SIN normalizar ni convertir formato: eso lo hace una capa posterior.`;
 
-async function extraerCampos(mensajeTexto, borradorActual = {}) {
+async function extraerCampos(mensajeTexto, borradorActual = {}, campoPendiente = null) {
   const contexto = Object.keys(borradorActual).length
     ? `Borrador actual de la conversacion (ya validado, no lo repitas salvo que el usuario lo corrija explicitamente):\n${JSON.stringify(borradorActual)}`
     : 'No hay borrador previo en esta conversacion.';
+
+  const contextoPendiente = campoPendiente
+    ? `\n\nCampo que se le acaba de preguntar al usuario: "${campoPendiente}"`
+    : '';
 
   const respuesta = await client.chat.completions.create({
     model: 'gpt-4o-2024-08-06',
     messages: [
       { role: 'system', content: PROMPT_SISTEMA },
-      { role: 'user', content: `${contexto}\n\nMensaje nuevo del usuario:\n${mensajeTexto}` },
+      { role: 'user', content: `${contexto}${contextoPendiente}\n\nMensaje nuevo del usuario:\n${mensajeTexto}` },
     ],
     response_format: { type: 'json_schema', json_schema: ESQUEMA_CAMPOS },
   });
