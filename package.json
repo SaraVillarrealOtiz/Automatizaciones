@@ -1,0 +1,22 @@
+{
+  "name": "automatizaciones-asignacion-tareas",
+  "version": "1.0.0",
+  "description": "Webhook de WhatsApp que interpreta tareas con OpenAI, valida deterministicamente y las asigna en Microsoft Planner, con auditoria en Firebase.",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js",
+    "test": "node --test",
+    "poblar-clientes": "node scripts/poblarClientesYResponsables.js"
+  },
+  "dependencies": {
+    "axios": "^1.7.9",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "firebase-admin": "^13.0.2",
+    "openai": "^4.77.0",
+    "xlsx": "^0.18.5"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

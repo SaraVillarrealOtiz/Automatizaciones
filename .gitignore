@@ -1,0 +1,10 @@
+node_modules/
+.env
+.env.local
+*.log
+
+# Insumos con datos internos (correos del equipo, lista de clientes) para
+# scripts/poblarClientesYResponsables.js. Solo se necesitan localmente al correr
+# el script; no deben quedar versionados en el repositorio.
+Usuarios microsoft.xlsx
+planes_con_buckets_RESPONSABLES.xlsx
