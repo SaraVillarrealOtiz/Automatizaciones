@@ -112,13 +112,12 @@ async function procesarMensajeEntrante(mensaje, nombreSolicitante) {
 
   const camposExtraidos = await extraerCampos(texto, conversacion.borrador, conversacion.campoPendiente);
 
-  // Saludo puro en el primer mensaje de una conversacion nueva (no trae ningun dato de
-  // tarea): se presenta ContaLia y se listan los campos minimos, en vez de lanzar
-  // directo la pregunta puntual de "tarea". Si el primer mensaje ya trae datos de la
-  // tarea, se omite el saludo y se sigue directo con la validacion de lo que falte.
-  const esConversacionNueva = Object.keys(conversacion.borrador).length === 0;
+  // Saludo puro (no trae ningun dato de tarea): se presenta ContaLia y se listan los
+  // campos minimos, sea el primer mensaje de la conversacion o haya historial previo.
+  // Si el mensaje ya trae datos de la tarea, se omite el saludo y se sigue directo con
+  // la validacion de lo que falte.
   const noExtrajoNingunCampo = Object.values(camposExtraidos).every((v) => !v);
-  if (esConversacionNueva && noExtrajoNingunCampo) {
+  if (noExtrajoNingunCampo) {
     const conversacionSaludo = agregarAlHistorial(
       { ...conversacion, estado: 'recolectando', campoPendiente: null },
       'usuario',
