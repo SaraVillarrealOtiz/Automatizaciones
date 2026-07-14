@@ -28,7 +28,7 @@ function resolverEntidad(textoCrudo, listaEntidades) {
 
 const ALIAS_URGENCIA = {
   alta: ['alta', 'urgente', 'urgencia alta', 'prioritario', 'critico', 'critica', 'ya', 'inmediato'],
-  media: ['media', 'normal', 'moderada', 'intermedia'],
+  media: ['media', 'normal', 'moderada', 'intermedia', 'importante'],
   baja: ['baja', 'sin afan', 'no urgente', 'cuando se pueda', 'poca prioridad'],
 };
 

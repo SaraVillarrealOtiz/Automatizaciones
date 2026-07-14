@@ -59,7 +59,8 @@ function mensajeConfirmacion(resuelto) {
 📋 ${resuelto.tarea}
 👤 Responsable: ${resuelto.responsable.nombre}
 🏢 Cliente: ${resuelto.cliente.nombre}
-📅 Vence: ${formatearFechaBogota(resuelto.fechaLimite)}`;
+📅 Vence: ${formatearFechaBogota(resuelto.fechaLimite)}
+🚦 Urgencia: ${resuelto.urgencia}`;
 }
 
 function extraerMensajeEntrante(body) {
