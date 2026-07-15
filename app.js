@@ -39,7 +39,7 @@ function formatearFechaBogota(fecha) {
 }
 
 function mensajeBienvenida() {
-  return `👋 ¡Hola! Soy *ContaLia*, tu asistente para asignar tareas del equipo.
+  return `👋 ¡Hola! Soy *ContaLigal*, tu asistente para asignar tareas del equipo.
 
 Para crear una tarea necesito estos datos mínimos:
 
@@ -113,7 +113,7 @@ async function procesarMensajeEntrante(mensaje, nombreSolicitante) {
 
   const camposExtraidos = await extraerCampos(texto, conversacion.borrador, conversacion.campoPendiente);
 
-  // Saludo puro (no trae ningun dato de tarea): se presenta ContaLia y se listan los
+  // Saludo puro (no trae ningun dato de tarea): se presenta ContaLigal y se listan los
   // campos minimos, sea el primer mensaje de la conversacion o haya historial previo.
   // Si el mensaje ya trae datos de la tarea, se omite el saludo y se sigue directo con
   // la validacion de lo que falte.
