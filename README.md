@@ -101,6 +101,9 @@ los documentos que sí coinciden).
 
 ## Notas de diseño
 
+- **Nombre del bot**: el asistente se presenta como **ContaLigal** en el mensaje de
+  bienvenida (cuando el primer mensaje de una conversación es un saludo sin datos de
+  tarea, ver `mensajeBienvenida()` en `app.js`).
 - **Sin control de acceso por remitente (de momento)**: cualquier número puede escribirle
   al bot y crear/asignar tareas; no hay una lista blanca de quién puede solicitar. Por
   eso cada tarea (`tareas/{id}`) guarda `telefonoSolicitante` y `nombreSolicitante`
