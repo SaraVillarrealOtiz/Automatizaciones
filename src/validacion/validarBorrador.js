@@ -6,8 +6,12 @@ const { parsearFechaLimite, parsearTiempoEstimadoMinutos } = require('../interpr
 const CAMPOS_OBLIGATORIOS_CRUDOS = ['tarea', 'responsable', 'cliente', 'fechaLimite', 'urgencia', 'descripcion'];
 
 // Orden de la cadena de escalamiento: si "responsable" no contesta/avanza, escala al siguiente.
+// "Coordinador" en el Excel de origen equivale a este nivel "Supervisor" (mismo rol,
+// nombre distinto en la fuente). Cada nivel puede tener MAS DE UNA persona valida
+// (ej. "Coordinador: Jose Bueno, Luisa"): se guarda como arreglo de ids, y cualquiera
+// de las personas listadas es valida para ese nivel en ese cliente.
 const NIVELES_ESCALAMIENTO = ['Auxiliar', 'Analista', 'Supervisor'];
-const CAMPO_ID_POR_NIVEL = { Auxiliar: 'auxiliarId', Analista: 'analistaId', Supervisor: 'supervisorId' };
+const CAMPO_IDS_POR_NIVEL = { Auxiliar: 'auxiliarIds', Analista: 'analistaIds', Supervisor: 'supervisorIds' };
 
 const PREGUNTAS = {
   tarea: '¿Cuál es el nombre/título de la tarea? 📝',
@@ -27,7 +31,8 @@ const PREGUNTAS = {
  */
 function resolverNivelEnCliente(personaId, clienteResuelto) {
   for (const nivel of NIVELES_ESCALAMIENTO) {
-    if (clienteResuelto[CAMPO_ID_POR_NIVEL[nivel]] === personaId) {
+    const ids = clienteResuelto[CAMPO_IDS_POR_NIVEL[nivel]] || [];
+    if (ids.includes(personaId)) {
       return nivel;
     }
   }
@@ -96,7 +101,7 @@ function validarBorrador(borradorCrudo, { responsables = [], clientes = [] } = {
     };
   }
 
-  if (!clienteResuelto.plannerPlanId || !clienteResuelto.bucketInicioId) {
+  if (!clienteResuelto.plannerPlanId || !clienteResuelto.bucketInicioId || !clienteResuelto.plannerGroupId) {
     return {
       valido: false,
       campoPendiente: 'cliente',
@@ -162,4 +167,4 @@ function validarBorrador(borradorCrudo, { responsables = [], clientes = [] } = {
   };
 }
 
-module.exports = { combinarBorradorCrudo, validarBorrador, CAMPOS_OBLIGATORIOS_CRUDOS, NIVELES_ESCALAMIENTO, CAMPO_ID_POR_NIVEL, resolverNivelEnCliente };
+module.exports = { combinarBorradorCrudo, validarBorrador, CAMPOS_OBLIGATORIOS_CRUDOS, NIVELES_ESCALAMIENTO, CAMPO_IDS_POR_NIVEL, resolverNivelEnCliente };

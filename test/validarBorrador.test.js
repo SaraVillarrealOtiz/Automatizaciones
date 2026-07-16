@@ -11,11 +11,12 @@ const clientes = [
     id: 'c1',
     nombre: 'Acme SAS',
     alias: ['acme'],
+    plannerGroupId: 'group-1',
     plannerPlanId: 'plan-1',
     bucketInicioId: 'bucket-inicio-1',
-    auxiliarId: 'r1',
-    analistaId: 'r2',
-    supervisorId: null,
+    auxiliarIds: ['r1'],
+    analistaIds: ['r2'],
+    supervisorIds: [],
   },
 ];
 
@@ -62,7 +63,7 @@ test('el nivel se determina segun el rol de esa persona para ese cliente en part
 
 test('persona valida pero que no pertenece a la cadena de ese cliente es rechazada', () => {
   const otroCliente = [
-    { id: 'c2', nombre: 'Beta SAS', alias: ['beta'], plannerPlanId: 'plan-2', bucketInicioId: 'bucket-2', auxiliarId: 'r2', analistaId: null, supervisorId: null },
+    { id: 'c2', nombre: 'Beta SAS', alias: ['beta'], plannerGroupId: 'group-2', plannerPlanId: 'plan-2', bucketInicioId: 'bucket-2', auxiliarIds: ['r2'], analistaIds: [], supervisorIds: [] },
   ];
   const crudo = {
     tarea: 'Enviar factura',
@@ -76,6 +77,35 @@ test('persona valida pero que no pertenece a la cadena de ese cliente es rechaza
   const resultado = validarBorrador(crudo, { responsables, clientes: otroCliente });
   assert.strictEqual(resultado.valido, false);
   assert.strictEqual(resultado.campoPendiente, 'responsable');
+});
+
+test('cualquiera de varias personas listadas en un mismo rol es valida', () => {
+  const clienteConDosSupervisores = [
+    {
+      id: 'c3',
+      nombre: 'Gamma SAS',
+      alias: ['gamma'],
+      plannerGroupId: 'group-3',
+      plannerPlanId: 'plan-3',
+      bucketInicioId: 'bucket-3',
+      auxiliarIds: [],
+      analistaIds: [],
+      supervisorIds: ['r1', 'r2'],
+    },
+  ];
+  for (const nombre of ['juan', 'maria']) {
+    const crudo = {
+      tarea: 'Enviar factura',
+      responsable: nombre,
+      cliente: 'gamma',
+      fechaLimite: 'mañana',
+      urgencia: 'alta',
+      descripcion: 'x',
+    };
+    const resultado = validarBorrador(crudo, { responsables, clientes: clienteConDosSupervisores });
+    assert.strictEqual(resultado.valido, true);
+    assert.strictEqual(resultado.resuelto.nivelActual, 'Supervisor');
+  }
 });
 
 test('responsable fuera de lista es rechazado, no se adivina', () => {
