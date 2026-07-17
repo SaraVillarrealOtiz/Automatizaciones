@@ -99,6 +99,24 @@ los documentos que sí coinciden).
 `Authorization: Bearer <idToken>`). Filtros opcionales por query string: `estado`,
 `responsableEmail`, `cliente`, `limite`.
 
+## Avisos de vencimiento por Microsoft Teams
+
+Si una tarea tiene una **hora de entrega explícita** (ej. "mañana a las 3pm", no solo el
+día), `src/teams/avisosVencimiento.js` revisa cada 5 minutos las tareas activas y envía un
+aviso al canal de Teams configurado (`TEAMS_WEBHOOK_URL`) cuando falta ~1 hora para el
+vencimiento. El aviso menciona la tarea, el cliente, el responsable actual, la fecha límite,
+y a quién escalaría (siguiente nivel Auxiliar→Analista→Supervisor) si no se completa a tiempo.
+
+El webhook debe crearse en Teams vía la app **"Workflows"** (plantilla *"Post to a channel
+when a webhook request is received"*) — los Conectores clásicos ("Webhook entrante") fueron
+retirados por Microsoft y ya no funcionan. **Ni los Conectores clásicos ni los webhooks de
+Workflows soportan botones interactivos** (`Action.Submit`); marcar una tarea como
+completada/en revisión directamente desde el mensaje de Teams requeriría un Bot de Microsoft
+Teams (Bot Framework) — queda pendiente como una fase futura, no implementada.
+
+Tareas sin hora explícita (solo con fecha) no generan aviso, ya que "1 hora antes" no tiene
+un punto de referencia real sin una hora concreta.
+
 ## Notas de diseño
 
 - **Nombre del bot**: el asistente se presenta como **ContaLigal** en el mensaje de

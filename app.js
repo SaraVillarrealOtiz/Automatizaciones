@@ -12,6 +12,7 @@ const { listarClientes } = require('./src/firestore/clientes');
 const { crearTareaPlanner } = require('./src/planner/crearTarea');
 const { crearTarea, registrarEvento } = require('./src/firestore/tareas');
 const { registerReportesRoute } = require('./src/reportes/reporteTareas');
+const { iniciarProgramadorDeAvisos } = require('./src/teams/avisosVencimiento');
 
 // Create an Express app
 const app = express();
@@ -235,4 +236,5 @@ registerReportesRoute(app);
 // Start the server
 app.listen(port, () => {
   console.log(`\nListening on port ${port}\n`);
+  iniciarProgramadorDeAvisos();
 });
