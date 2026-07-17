@@ -1,5 +1,5 @@
 const { resolverEntidad, resolverUrgencia } = require('../interpretacion/normalizarTexto');
-const { parsearFechaLimite, parsearTiempoEstimadoMinutos } = require('../interpretacion/parsearTiempo');
+const { parsearFechaLimiteConHora, parsearTiempoEstimadoMinutos } = require('../interpretacion/parsearTiempo');
 
 // "tiempoEstimado" es opcional: si se menciona claramente se guarda para reportes,
 // pero no bloquea la creacion de la tarea (no se usa para crearla en Planner).
@@ -109,14 +109,15 @@ function validarBorrador(borradorCrudo, { responsables = [], clientes = [] } = {
     };
   }
 
-  const fechaLimite = parsearFechaLimite(borradorCrudo.fechaLimite);
-  if (!fechaLimite) {
+  const fechaLimiteParseada = parsearFechaLimiteConHora(borradorCrudo.fechaLimite);
+  if (!fechaLimiteParseada) {
     return {
       valido: false,
       campoPendiente: 'fechaLimite',
       mensaje: `No logré entender la fecha "${borradorCrudo.fechaLimite}". ${PREGUNTAS.fechaLimite} (ej: mañana, viernes, 20 de julio)`,
     };
   }
+  const { fecha: fechaLimite, horaExplicita: horaLimiteExplicita } = fechaLimiteParseada;
   if (fechaLimite.getTime() < Date.now()) {
     return {
       valido: false,
@@ -160,6 +161,7 @@ function validarBorrador(borradorCrudo, { responsables = [], clientes = [] } = {
       cliente: clienteResuelto,
       nivelActual,
       fechaLimite,
+      horaLimiteExplicita,
       tiempoEstimadoMinutos,
       urgencia,
       adjuntos: borradorCrudo.adjuntos || [],

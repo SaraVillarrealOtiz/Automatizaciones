@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { parsearFechaLimite, parsearTiempoEstimadoMinutos } = require('../src/interpretacion/parsearTiempo');
+const { parsearFechaLimite, parsearFechaLimiteConHora, parsearTiempoEstimadoMinutos } = require('../src/interpretacion/parsearTiempo');
 
 test('mañana y pasado mañana son fechas distintas', () => {
   const manana = parsearFechaLimite('mañana');
@@ -37,4 +37,35 @@ test('tiempo estimado en horas y minutos', () => {
 
 test('tiempo estimado no reconocido devuelve null', () => {
   assert.strictEqual(parsearTiempoEstimadoMinutos('no se'), null);
+});
+
+test('parsearFechaLimiteConHora sin hora mencionada usa la hora por defecto y horaExplicita=false', () => {
+  const resultado = parsearFechaLimiteConHora('mañana');
+  assert.ok(resultado);
+  assert.strictEqual(resultado.horaExplicita, false);
+  assert.deepStrictEqual(resultado.fecha, parsearFechaLimite('mañana'));
+});
+
+test('parsearFechaLimiteConHora detecta hora explicita en formato "3pm"', () => {
+  const resultado = parsearFechaLimiteConHora('mañana a las 3pm');
+  assert.ok(resultado);
+  assert.strictEqual(resultado.horaExplicita, true);
+  // 3pm Bogota (UTC-5) = 20:00 UTC
+  assert.strictEqual(resultado.fecha.getUTCHours(), 20);
+});
+
+test('parsearFechaLimiteConHora detecta formato 24 horas "15:00"', () => {
+  const resultado = parsearFechaLimiteConHora('mañana a las 15:00');
+  assert.strictEqual(resultado.horaExplicita, true);
+  assert.strictEqual(resultado.fecha.getUTCHours(), 20);
+});
+
+test('parsearFechaLimiteConHora detecta "mediodia"', () => {
+  const resultado = parsearFechaLimiteConHora('mañana a mediodia');
+  assert.strictEqual(resultado.horaExplicita, true);
+  assert.strictEqual(resultado.fecha.getUTCHours(), 17); // 12pm Bogota = 17:00 UTC
+});
+
+test('parsearFechaLimiteConHora devuelve null si la fecha no se entiende, sin importar la hora', () => {
+  assert.strictEqual(parsearFechaLimiteConHora('a las 3pm'), null);
 });

@@ -5,6 +5,7 @@ const { enviarMensajeTexto, descargarMedia } = require('./src/whatsapp/client');
 const { transcribirAudio } = require('./src/openai/transcribirAudio');
 const { extraerCampos } = require('./src/openai/extraerCampos');
 const { combinarBorradorCrudo, validarBorrador } = require('./src/validacion/validarBorrador');
+const { verificarConflictoHorario } = require('./src/validacion/verificarConflictoHorario');
 const { obtenerConversacion, guardarConversacion, agregarAlHistorial, reiniciarConversacion } = require('./src/conversacion/estado');
 const { listarResponsables } = require('./src/firestore/responsables');
 const { listarClientes } = require('./src/firestore/clientes');
@@ -147,6 +148,23 @@ async function procesarMensajeEntrante(mensaje, nombreSolicitante) {
 
   const { resuelto } = resultado;
 
+  // Si el usuario dio una hora especifica de entrega (no la hora por defecto), se revisa
+  // si ese mismo responsable ya tiene otra tarea activa (sin completar en Planner) para
+  // exactamente esa misma fecha y hora, sin importar el cliente (la persona solo tiene
+  // una agenda). Si hay choque, no se crea la tarea: se le pide al usuario una hora distinta.
+  const conflicto = await verificarConflictoHorario({ resuelto });
+  if (conflicto.conflicto) {
+    conversacionActualizada.estado = 'recolectando';
+    conversacionActualizada.campoPendiente = 'fechaLimite';
+    delete conversacionActualizada.borrador.fechaLimite;
+    await guardarConversacion(telefono, conversacionActualizada);
+    await enviarMensajeTexto(
+      telefono,
+      `⚠️ Este responsable ya tiene una tarea asignada para esa misma hora límite de entrega, es probable que no alcance a cumplir ambas. Te sugiero asignar una nueva hora para esta tarea. 📅 ¿Cuál sería la nueva fecha/hora límite?`
+    );
+    return;
+  }
+
   let resultadoPlanner;
   let tareaId;
   try {
@@ -166,6 +184,7 @@ async function procesarMensajeEntrante(mensaje, nombreSolicitante) {
     cliente: resuelto.cliente.nombre,
     nivelActual: resuelto.nivelActual,
     fechaLimite: resuelto.fechaLimite.toISOString(),
+    horaLimiteExplicita: resuelto.horaLimiteExplicita,
     tiempoEstimado: resuelto.tiempoEstimadoMinutos,
     urgencia: resuelto.urgencia,
     descripcion: resuelto.descripcion,

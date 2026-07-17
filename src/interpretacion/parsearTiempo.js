@@ -46,29 +46,28 @@ function construirFechaUtcDesdeBogota(anio, mes, dia, hora = 17, minuto = 0) {
 }
 
 /**
- * Convierte un texto de fecha limite (en espanol, tal como lo dijo el usuario) a un Date UTC.
- * Devuelve null si no logra interpretarlo con certeza (nunca "adivina" una fecha arbitraria).
+ * Calcula los componentes (anio, mes, dia) en hora local de Bogota que representa el
+ * texto de fecha limite dado. Devuelve null si no logra interpretarlo con certeza
+ * (nunca "adivina" una fecha arbitraria). Uso interno, compartido entre
+ * parsearFechaLimite y parsearFechaLimiteConHora.
  */
-function parsearFechaLimite(textoCrudo) {
-  const texto = limpiar(textoCrudo);
-  if (!texto) return null;
-
+function calcularComponentesFecha(texto) {
   const base = ahoraEnBogota();
 
   if (/\bhoy\b/.test(texto)) {
-    return construirFechaUtcDesdeBogota(base.getFullYear(), base.getMonth(), base.getDate());
+    return { anio: base.getFullYear(), mes: base.getMonth(), dia: base.getDate() };
   }
 
   if (/\bpasado\s+manana\b/.test(texto)) {
     const d = new Date(base);
     d.setDate(d.getDate() + 2);
-    return construirFechaUtcDesdeBogota(d.getFullYear(), d.getMonth(), d.getDate());
+    return { anio: d.getFullYear(), mes: d.getMonth(), dia: d.getDate() };
   }
 
   if (/\bmanana\b/.test(texto)) {
     const d = new Date(base);
     d.setDate(d.getDate() + 1);
-    return construirFechaUtcDesdeBogota(d.getFullYear(), d.getMonth(), d.getDate());
+    return { anio: d.getFullYear(), mes: d.getMonth(), dia: d.getDate() };
   }
 
   // "en 3 dias" / "en 2 semanas"
@@ -78,7 +77,7 @@ function parsearFechaLimite(textoCrudo) {
     const unidad = enPlazo[2].startsWith('semana') ? 7 : 1;
     const d = new Date(base);
     d.setDate(d.getDate() + cantidad * unidad);
-    return construirFechaUtcDesdeBogota(d.getFullYear(), d.getMonth(), d.getDate());
+    return { anio: d.getFullYear(), mes: d.getMonth(), dia: d.getDate() };
   }
 
   // dia de la semana: "el viernes", "para el lunes"
@@ -87,7 +86,7 @@ function parsearFechaLimite(textoCrudo) {
       const d = new Date(base);
       const diferencia = (indiceDia - d.getDay() + 7) % 7 || 7; // siempre el proximo, nunca hoy mismo
       d.setDate(d.getDate() + diferencia);
-      return construirFechaUtcDesdeBogota(d.getFullYear(), d.getMonth(), d.getDate());
+      return { anio: d.getFullYear(), mes: d.getMonth(), dia: d.getDate() };
     }
   }
 
@@ -98,7 +97,7 @@ function parsearFechaLimite(textoCrudo) {
     const mes = MESES[fechaConMes[2]];
     if (mes !== undefined) {
       const anio = fechaConMes[3] ? parseInt(fechaConMes[3], 10) : base.getFullYear();
-      return construirFechaUtcDesdeBogota(anio, mes, dia);
+      return { anio, mes, dia };
     }
   }
 
@@ -110,11 +109,84 @@ function parsearFechaLimite(textoCrudo) {
     let anio = fechaNumerica[3] ? parseInt(fechaNumerica[3], 10) : base.getFullYear();
     if (anio < 100) anio += 2000;
     if (mes >= 0 && mes <= 11 && dia >= 1 && dia <= 31) {
-      return construirFechaUtcDesdeBogota(anio, mes, dia);
+      return { anio, mes, dia };
     }
   }
 
   return null;
+}
+
+/**
+ * Convierte un texto de fecha limite (en espanol, tal como lo dijo el usuario) a un Date UTC.
+ * Devuelve null si no logra interpretarlo con certeza (nunca "adivina" una fecha arbitraria).
+ * Usa una hora por defecto (5pm Bogota); para detectar una hora explicita ver
+ * parsearFechaLimiteConHora.
+ */
+function parsearFechaLimite(textoCrudo) {
+  const texto = limpiar(textoCrudo);
+  if (!texto) return null;
+
+  const componentes = calcularComponentesFecha(texto);
+  if (!componentes) return null;
+  return construirFechaUtcDesdeBogota(componentes.anio, componentes.mes, componentes.dia);
+}
+
+// Reconoce una hora especifica mencionada explicitamente por el usuario (ej. "a las 3pm",
+// "3:00 pm", "15:00", "a las 9 de la noche", "medio dia"). Devuelve null si no hay
+// ninguna hora explicita en el texto (nunca se "adivina" ni se asume una hora).
+function parsearHoraExplicita(texto) {
+  if (/\bmedio\s*dia\b/.test(texto)) return { hora: 12, minuto: 0 };
+  if (/\bmedianoche\b/.test(texto)) return { hora: 0, minuto: 0 };
+
+  let m = texto.match(/\ba las?\s+(\d{1,2})(?::(\d{2}))?\s+de la\s+(manana|tarde|noche)\b/);
+  if (m) {
+    let hora = parseInt(m[1], 10);
+    const minuto = m[2] ? parseInt(m[2], 10) : 0;
+    if ((m[3] === 'tarde' || m[3] === 'noche') && hora < 12) hora += 12;
+    if (m[3] === 'manana' && hora === 12) hora = 0;
+    return { hora, minuto };
+  }
+
+  m = texto.match(/\b(\d{1,2})(?::(\d{2}))?\s*(a\.?\s?m\.?|p\.?\s?m\.?)\b/);
+  if (m) {
+    let hora = parseInt(m[1], 10);
+    const minuto = m[2] ? parseInt(m[2], 10) : 0;
+    const esPM = m[3][0] === 'p';
+    if (esPM && hora < 12) hora += 12;
+    if (!esPM && hora === 12) hora = 0;
+    return { hora, minuto };
+  }
+
+  m = texto.match(/\b([01]?\d|2[0-3]):([0-5]\d)\b/);
+  if (m) {
+    return { hora: parseInt(m[1], 10), minuto: parseInt(m[2], 10) };
+  }
+
+  return null;
+}
+
+/**
+ * Igual que parsearFechaLimite, pero ademas detecta si el usuario menciono una hora
+ * especifica de entrega. Devuelve { fecha: Date, horaExplicita: boolean } o null si no
+ * logra interpretar la fecha. Si no se menciona hora, "fecha" usa la hora por defecto
+ * (5pm Bogota) igual que antes, y horaExplicita queda en false.
+ */
+function parsearFechaLimiteConHora(textoCrudo) {
+  const texto = limpiar(textoCrudo);
+  if (!texto) return null;
+
+  const componentes = calcularComponentesFecha(texto);
+  if (!componentes) return null;
+
+  const hora = parsearHoraExplicita(texto);
+  if (!hora) {
+    return { fecha: construirFechaUtcDesdeBogota(componentes.anio, componentes.mes, componentes.dia), horaExplicita: false };
+  }
+
+  return {
+    fecha: construirFechaUtcDesdeBogota(componentes.anio, componentes.mes, componentes.dia, hora.hora, hora.minuto),
+    horaExplicita: true,
+  };
 }
 
 /**
@@ -140,4 +212,4 @@ function parsearTiempoEstimadoMinutos(textoCrudo) {
   return null;
 }
 
-module.exports = { parsearFechaLimite, parsearTiempoEstimadoMinutos };
+module.exports = { parsearFechaLimite, parsearFechaLimiteConHora, parsearTiempoEstimadoMinutos };
