@@ -26,13 +26,20 @@ const RUTA_PLANES = path.join(__dirname, '..', 'planes_con_buckets_RESPONSABLES.
 
 // Confirmado explícitamente con el usuario (2026-07-10). Cada clave es el nombre corto
 // tal como aparece en la columna "Responsables" del Excel de planes.
+// `aliasExtra` agrega alias adicionales (ej. solo el primer nombre) sin quitar el alias
+// principal usado en la cadena de escalamiento del Excel. Agregado 2026-07-21 para que
+// el usuario pueda referirse a cada persona solo por su primer nombre en WhatsApp.
+// OJO: hay DOS personas llamadas "Luisa" (Luisa Alejandra Sánchez Romero y Luisa
+// Fernanda Garay Rojas) — por eso a la primera se le sigue diciendo "Alejandra" (su
+// segundo nombre) y NO se le agrega "Luisa" como alias, para no generar ambiguedad
+// entre las dos. Confirmado explicitamente con el usuario (2026-07-10).
 const MAPA_PERSONAS = {
   Natalia: { nombre: 'Natalia Muñoz Calderón', email: 'contabilidad3@jpulido.com.co', activo: true },
   Linda: { nombre: 'Linda Nahomy Lozada Pérez', email: 'contabilidad4@jpulido.com.co', activo: true },
   Alejandra: { nombre: 'Luisa Alejandra Sánchez Romero', email: 'contabilidad@jpulido.com.co', activo: true },
   Sofia: { nombre: 'Sofía Otálora Raigozo', email: 'analista2@jpulido.com.co', activo: true },
   Ruben: { nombre: 'Rubén Darío Palencia Cubillos', email: 'analista3@jpulido.com.co', activo: true },
-  'Jose Bueno': { nombre: 'Jose Manuel Bueno Perea', email: 'analista5@jpulido.com.co', activo: true },
+  'Jose Bueno': { nombre: 'Jose Manuel Bueno Perea', email: 'analista5@jpulido.com.co', activo: true, aliasExtra: ['Jose'] },
   Luisa: { nombre: 'Luisa Fernanda Garay Rojas', email: 'analista1@jpulido.com.co', activo: true },
   Jeysson: { nombre: 'Jeysson Alexander Pulido Santana', email: 'gerencia@jpulido.com.co', activo: true },
   Cristina: { nombre: 'Revisoría Fiscal', email: 'Rfiscal@jpulido.com.co', activo: true },
@@ -42,7 +49,7 @@ const MAPA_PERSONAS = {
   Ricardo: { nombre: 'Ricardo', email: null, activo: false },
   // Agregada 2026-07-16: aparece en la cadena de escalamiento de al menos un cliente
   // ("Analista: Sara Villarreal"). Coincide con el directorio de Azure AD.
-  'Sara Villarreal': { nombre: 'Sara Villarreal Ortiz', email: 'contabilidad2@jpulido.com.co', activo: true },
+  'Sara Villarreal': { nombre: 'Sara Villarreal Ortiz', email: 'contabilidad2@jpulido.com.co', activo: true, aliasExtra: ['Sara'] },
 };
 
 function slugify(texto) {
@@ -94,7 +101,7 @@ async function main() {
       .doc(id)
       .set({
         nombre: datos.nombre,
-        alias: [nombreCorto],
+        alias: [nombreCorto, ...(datos.aliasExtra || [])],
         email: datos.email,
         activo: datos.activo,
       });
