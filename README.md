@@ -27,7 +27,7 @@ registro auditable en Firebase (Firestore + Storage).
    borrador previo de la conversación (Firestore `conversaciones/{telefono}`).
 4. Una capa determinista (`src/validacion/validarBorrador.js`, sin IA) valida
    completitud y reglas de negocio: fecha válida y futura, urgencia en
-   `Alta|Media|Baja`, responsable/cliente existentes en las listas de Firestore.
+   `Urgente|Importante|Media|Baja`, responsable/cliente existentes en las listas de Firestore.
    Si falta o es inválido algo, se responde por WhatsApp pidiendo puntualmente ese dato.
 5. Con el borrador válido, se busca en Firestore (`planes/{responsableId}_{clienteId}`)
    el Plan/Bucket de Microsoft Planner correspondiente (los Planes ya existen en M365,
