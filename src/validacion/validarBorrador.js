@@ -19,7 +19,7 @@ const PREGUNTAS = {
   cliente: '¿Para qué cliente es esta tarea? 🏢',
   fechaLimite: '¿Cuál es la fecha límite? 📅',
   tiempoEstimado: '¿Cuánto tiempo estimado tomará la tarea? ⏱️',
-  urgencia: '¿Cuál es la urgencia: Alta, Media o Baja? 🚦',
+  urgencia: '¿Cuál es la urgencia: Urgente, Importante, Media o Baja? 🚦',
   descripcion: '¿Puedes dar una breve descripción de la tarea? 📌',
 };
 
@@ -146,7 +146,7 @@ function validarBorrador(borradorCrudo, { responsables = [], clientes = [] } = {
     return {
       valido: false,
       campoPendiente: 'urgencia',
-      mensaje: `"${borradorCrudo.urgencia}" no es Alta, Media ni Baja. ${PREGUNTAS.urgencia}`,
+      mensaje: `"${borradorCrudo.urgencia}" no es Urgente, Importante, Media ni Baja. ${PREGUNTAS.urgencia}`,
     };
   }
 

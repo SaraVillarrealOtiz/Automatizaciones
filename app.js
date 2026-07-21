@@ -50,7 +50,7 @@ Para crear una tarea necesito estos datos mínimos:
 👤 Responsable (nombre de la persona)
 🏢 Cliente
 📅 Fecha límite
-🚦 Urgencia (Alta, Media o Baja)
+🚦 Urgencia (Urgente, Importante, Media o Baja)
 📌 Descripción
 
 Puedes escribirlo todo en un solo mensaje o ir respondiendo mis preguntas paso a paso. (El tiempo estimado es opcional.)`;

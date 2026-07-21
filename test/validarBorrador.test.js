@@ -40,7 +40,8 @@ test('borrador completo y válido se resuelve correctamente', () => {
   assert.strictEqual(resultado.valido, true);
   assert.strictEqual(resultado.resuelto.responsable.id, 'r1');
   assert.strictEqual(resultado.resuelto.cliente.id, 'c1');
-  assert.strictEqual(resultado.resuelto.urgencia, 'Alta');
+  // "alta" es alias heredado de "Urgente" (ver src/interpretacion/normalizarTexto.js)
+  assert.strictEqual(resultado.resuelto.urgencia, 'Urgente');
   // "juan" es auxiliarId del cliente "acme" -> nivel inicial Auxiliar
   assert.strictEqual(resultado.resuelto.nivelActual, 'Auxiliar');
 });

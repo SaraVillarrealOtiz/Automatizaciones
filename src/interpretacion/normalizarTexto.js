@@ -26,11 +26,19 @@ function resolverEntidad(textoCrudo, listaEntidades) {
   return null;
 }
 
+// Los 4 niveles coinciden exactamente con la prioridad nativa de Planner
+// (Urgent/Important/Medium/Low, ver src/planner/crearTarea.js). "Alta" ya no existe
+// como nivel propio: quien diga "urgente" queda en Urgente, quien diga "importante"
+// queda en Importante (antes "importante" era sinonimo de Media, ahora es su propio
+// nivel, igual que en Planner).
 const ALIAS_URGENCIA = {
-  alta: ['alta', 'urgente', 'urgencia alta', 'prioritario', 'critico', 'critica', 'ya', 'inmediato'],
-  media: ['media', 'normal', 'moderada', 'intermedia', 'importante'],
+  urgente: ['urgente', 'urgencia alta', 'critico', 'critica', 'ya', 'inmediato', 'alta'],
+  importante: ['importante', 'prioritario', 'prioritaria'],
+  media: ['media', 'normal', 'moderada', 'intermedia'],
   baja: ['baja', 'sin afan', 'no urgente', 'cuando se pueda', 'poca prioridad'],
 };
+
+const ETIQUETA_NIVEL = { urgente: 'Urgente', importante: 'Importante', media: 'Media', baja: 'Baja' };
 
 function resolverUrgencia(textoCrudo) {
   if (!textoCrudo) return null;
@@ -38,7 +46,7 @@ function resolverUrgencia(textoCrudo) {
 
   for (const [nivel, alias] of Object.entries(ALIAS_URGENCIA)) {
     if (alias.some((a) => limpiar(a) === objetivo)) {
-      return nivel === 'alta' ? 'Alta' : nivel === 'media' ? 'Media' : 'Baja';
+      return ETIQUETA_NIVEL[nivel];
     }
   }
 
