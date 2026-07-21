@@ -7,6 +7,7 @@ const { extraerCampos } = require('./src/openai/extraerCampos');
 const { combinarBorradorCrudo, validarBorrador } = require('./src/validacion/validarBorrador');
 const { verificarConflictoHorario } = require('./src/validacion/verificarConflictoHorario');
 const { obtenerConversacion, guardarConversacion, agregarAlHistorial, reiniciarConversacion } = require('./src/conversacion/estado');
+const { mencionaNuevaTarea, esRespuestaAfirmativa } = require('./src/interpretacion/normalizarTexto');
 const { listarResponsables } = require('./src/firestore/responsables');
 const { listarClientes } = require('./src/firestore/clientes');
 const { crearTareaPlanner } = require('./src/planner/crearTarea');
@@ -53,6 +54,10 @@ Para crear una tarea necesito estos datos mínimos:
 📌 Descripción
 
 Puedes escribirlo todo en un solo mensaje o ir respondiendo mis preguntas paso a paso. (El tiempo estimado es opcional.)`;
+}
+
+function hayBorradorEnCurso(borrador) {
+  return Object.keys(borrador || {}).some((campo) => campo !== 'adjuntos' && borrador[campo]);
 }
 
 function mensajeConfirmacion(resuelto) {
@@ -110,6 +115,42 @@ async function procesarMensajeEntrante(mensaje, nombreSolicitante) {
     texto = await transcribirAudio(buffer, extension);
   } else {
     await enviarMensajeTexto(telefono, 'Por ahora solo puedo procesar mensajes de texto, audio, imagen o documento.');
+    return;
+  }
+
+  // Si al usuario se le acaba de preguntar si de verdad quiere empezar una tarea nueva
+  // (ver mas abajo), esta respuesta decide si se reinicia el borrador o se sigue con el
+  // que ya tenia en curso. No pasa por la IA: es una confirmacion puntual, deterministica.
+  if (conversacion.estado === 'confirmando_reinicio') {
+    if (esRespuestaAfirmativa(texto)) {
+      conversacion.borrador = {};
+      conversacion.campoPendiente = null;
+      conversacion.estado = 'recolectando';
+      // No se retorna: el mismo mensaje de confirmacion (o lo que traiga ademas del "si")
+      // sigue el flujo normal de extraccion, ahora contra un borrador vacio.
+    } else {
+      const conversacionCancelada = agregarAlHistorial(
+        { ...conversacion, estado: 'recolectando' },
+        'usuario',
+        texto
+      );
+      await guardarConversacion(telefono, conversacionCancelada);
+      await enviarMensajeTexto(telefono, 'Entendido, seguimos con la tarea que tenías en curso. 👍');
+      return;
+    }
+  } else if (mencionaNuevaTarea(texto) && hayBorradorEnCurso(conversacion.borrador)) {
+    // El usuario ya tiene datos de una tarea distinta en progreso: se confirma antes de
+    // reiniciar, para no perder ese avance por accidente.
+    const conversacionPendiente = agregarAlHistorial(
+      { ...conversacion, estado: 'confirmando_reinicio' },
+      'usuario',
+      texto
+    );
+    await guardarConversacion(telefono, conversacionPendiente);
+    await enviarMensajeTexto(
+      telefono,
+      '¿Confirmas que quieres iniciar la asignación de una *tarea nueva* (con un responsable y/o cliente diferente)? Esto reiniciará los datos que tenías en curso. Responde "sí" para continuar.'
+    );
     return;
   }
 

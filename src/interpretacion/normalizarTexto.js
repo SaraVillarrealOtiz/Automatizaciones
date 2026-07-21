@@ -45,4 +45,18 @@ function resolverUrgencia(textoCrudo) {
   return null;
 }
 
-module.exports = { limpiar, resolverEntidad, resolverUrgencia };
+// Deteccion determinista (sin IA) de que el usuario quiere empezar a asignar una tarea
+// nueva, distinta a la que tiene en curso (posiblemente para otro responsable/cliente).
+const PATRON_NUEVA_TAREA = /\b(nueva tarea|otra tarea|agregar (una )?tarea|asignar (una )?(nueva|otra)|otra asignacion)\b/i;
+
+function mencionaNuevaTarea(textoCrudo) {
+  return PATRON_NUEVA_TAREA.test(limpiar(textoCrudo));
+}
+
+const PATRON_AFIRMATIVO = /^(si|s|dale|confirmo|correcto|claro|ok|listo|de una|eso)\b/i;
+
+function esRespuestaAfirmativa(textoCrudo) {
+  return PATRON_AFIRMATIVO.test(limpiar(textoCrudo));
+}
+
+module.exports = { limpiar, resolverEntidad, resolverUrgencia, mencionaNuevaTarea, esRespuestaAfirmativa };
