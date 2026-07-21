@@ -6,8 +6,10 @@
 //     Planner por cliente, con sus Buckets (etapas) y la cadena de escalamiento
 //     "Auxiliar: X | Analista: Y | Supervisor: Z" en la columna "Responsables".
 //
-// El PlanId/BucketId ya vienen en el Excel (no hace falta llamar a Microsoft Graph
-// para descubrirlos), asi que este script solo necesita FIREBASE_SERVICE_ACCOUNT.
+// El PlanId/GroupId vienen del Excel, pero el BucketId de "Inicio" NO se toma del Excel
+// (se desactualiza si los buckets se recrean en Planner): se consulta en vivo via
+// Microsoft Graph. Por eso este script necesita FIREBASE_SERVICE_ACCOUNT y ademas
+// TENANT_ID/CLIENT_ID/CLIENT_SECRET (Azure AD) en las variables de entorno.
 //
 // El mapeo de nombres cortos ("Natalia", "Jose Bueno", ...) a persona/correo real fue
 // confirmado explicitamente con el usuario (no se adivina) y esta en MAPA_PERSONAS.
@@ -20,6 +22,7 @@ const path = require('path');
 const XLSX = require('xlsx');
 const { getDb } = require('../src/firestore/firebaseAdmin');
 const { limpiar } = require('../src/interpretacion/normalizarTexto');
+const { graphRequest } = require('../src/planner/graphClient');
 
 const RUTA_USUARIOS = path.join(__dirname, '..', 'Usuarios microsoft.xlsx');
 const RUTA_PLANES = path.join(__dirname, '..', 'planes_con_buckets_RESPONSABLES.xlsx');
@@ -61,6 +64,18 @@ function slugify(texto) {
     .replace(/[̀-ͯ]/g, '')
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '');
+}
+
+// El BucketId de "Inicio" que trae el Excel puede desactualizarse (ej. si los buckets se
+// recrean o reordenan directamente en Planner despues de exportar el Excel) — ya paso una
+// vez y dejo el bucketInicioId de 61 clientes apuntando a un bucket que ya no existia,
+// causando 404 reales al crear tareas. Por eso este script YA NO usa el BucketId del Excel:
+// siempre consulta en vivo los buckets del Plan via Microsoft Graph y usa el que se llama
+// "Inicio" en ese momento, para que el dato en Firestore nunca quede desactualizado.
+async function obtenerBucketInicioEnVivo(planId) {
+  const buckets = await graphRequest('GET', `/planner/plans/${planId}/buckets`);
+  const inicio = buckets.value.find((b) => b.name === 'Inicio');
+  return inicio ? inicio.id : null;
 }
 
 // "Coordinador" en el Excel de origen es el mismo rol que nosotros llamamos "Supervisor"
@@ -140,6 +155,13 @@ async function main() {
       continue;
     }
 
+    const planId = filasPlan[0].PlanId;
+    const bucketInicioIdEnVivo = await obtenerBucketInicioEnVivo(planId);
+    if (!bucketInicioIdEnVivo) {
+      omitidos.push(`${tituloPlan} (el Plan en Planner ya no tiene un bucket "Inicio" en vivo)`);
+      continue;
+    }
+
     const cadena = parsearCadenaEscalamiento(responsablesCadena);
     const roleIds = {};
     for (const rol of ['Auxiliar', 'Analista', 'Supervisor']) {
@@ -165,8 +187,8 @@ async function main() {
         alias: [],
         activo: true,
         plannerGroupId: filasPlan[0].GroupId,
-        plannerPlanId: filasPlan[0].PlanId,
-        bucketInicioId: bucketInicio.BucketId,
+        plannerPlanId: planId,
+        bucketInicioId: bucketInicioIdEnVivo,
         auxiliarIds: roleIds.Auxiliar,
         analistaIds: roleIds.Analista,
         supervisorIds: roleIds.Supervisor,
