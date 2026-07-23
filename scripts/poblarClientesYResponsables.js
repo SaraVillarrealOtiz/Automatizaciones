@@ -111,15 +111,24 @@ async function main() {
   for (const [nombreCorto, datos] of Object.entries(MAPA_PERSONAS)) {
     const id = slugify(datos.nombre);
     idPorNombreNormalizado[limpiar(nombreCorto)] = id;
-    await db
-      .collection('responsables')
-      .doc(id)
-      .set({
+    const ref = db.collection('responsables').doc(id);
+    // El alias en Firestore puede tener entradas agregadas por fuera de este script (ej.
+    // alias por palabra sueltas, ver contalia_project_status). Se hace UNION con lo ya
+    // guardado en vez de reemplazar, para no borrar ese trabajo cada vez que se re-corre
+    // este seed (mismo tipo de bug ya corregido con bucketInicioId — ver mas abajo).
+    const existente = await ref.get();
+    const aliasPrevio = existente.exists ? existente.data().alias || [] : [];
+    const aliasNuevo = [nombreCorto, ...(datos.aliasExtra || [])];
+    const aliasFinal = [...new Set([...aliasNuevo, ...aliasPrevio])];
+    await ref.set(
+      {
         nombre: datos.nombre,
-        alias: [nombreCorto, ...(datos.aliasExtra || [])],
+        alias: aliasFinal,
         email: datos.email,
         activo: datos.activo,
-      });
+      },
+      { merge: true }
+    );
   }
   console.log(`responsables: ${Object.keys(MAPA_PERSONAS).length} documentos escritos.`);
 
@@ -179,20 +188,26 @@ async function main() {
     }
 
     const clienteId = slugify(tituloPlan);
+    // `alias` NO se incluye aqui a proposito: este Excel (planes_con_buckets_RESPONSABLES.xlsx)
+    // no trae alias de clientes, esos se cargan aparte (ver contalia_project_status, fuente
+    // "EMPRESAS - TRABAJO JPULIDO 2026.xlsx"). Con merge:true, omitir el campo deja intacto
+    // cualquier alias ya guardado en Firestore en vez de borrarlo en cada re-corrida.
     await db
       .collection('clientes')
       .doc(clienteId)
-      .set({
-        nombre: tituloPlan,
-        alias: [],
-        activo: true,
-        plannerGroupId: filasPlan[0].GroupId,
-        plannerPlanId: planId,
-        bucketInicioId: bucketInicioIdEnVivo,
-        auxiliarIds: roleIds.Auxiliar,
-        analistaIds: roleIds.Analista,
-        supervisorIds: roleIds.Supervisor,
-      });
+      .set(
+        {
+          nombre: tituloPlan,
+          activo: true,
+          plannerGroupId: filasPlan[0].GroupId,
+          plannerPlanId: planId,
+          bucketInicioId: bucketInicioIdEnVivo,
+          auxiliarIds: roleIds.Auxiliar,
+          analistaIds: roleIds.Analista,
+          supervisorIds: roleIds.Supervisor,
+        },
+        { merge: true }
+      );
 
     clientesEscritos += 1;
   }
