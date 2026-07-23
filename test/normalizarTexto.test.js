@@ -1,6 +1,21 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { mencionaNuevaTarea, esRespuestaAfirmativa } = require('../src/interpretacion/normalizarTexto');
+const { mencionaNuevaTarea, esRespuestaAfirmativa, partirNombres } = require('../src/interpretacion/normalizarTexto');
+
+test('partirNombres separa dos nombres unidos por "y"', () => {
+  assert.deepStrictEqual(partirNombres('Natalia y Ruben'), ['Natalia', 'Ruben']);
+  assert.deepStrictEqual(partirNombres('Natalia, Ruben'), ['Natalia', 'Ruben']);
+  assert.deepStrictEqual(partirNombres('Natalia & Ruben'), ['Natalia', 'Ruben']);
+});
+
+test('partirNombres no fragmenta un nombre compuesto normal', () => {
+  assert.deepStrictEqual(partirNombres('Ana Maria Palacio'), ['Ana Maria Palacio']);
+});
+
+test('partirNombres con texto vacio devuelve arreglo vacio', () => {
+  assert.deepStrictEqual(partirNombres(''), []);
+  assert.deepStrictEqual(partirNombres(null), []);
+});
 
 test('mencionaNuevaTarea detecta frases de reinicio de tarea', () => {
   assert.strictEqual(mencionaNuevaTarea('Quiero asignar una nueva tarea'), true);

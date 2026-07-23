@@ -51,6 +51,15 @@ async function nombresDePersonas(ids, responsablesPorId) {
   return ids.map((id) => responsablesPorId.get(id)?.nombre).filter(Boolean);
 }
 
+// Una tarea puede tener uno o mas responsables (ver src/validacion/validarBorrador.js,
+// campo `responsables`). Los registros creados antes de esa funcionalidad solo tienen los
+// campos sueltos `responsableEmail`/`nivelActual` — se arman como un arreglo de 1 elemento
+// para que el resto del codigo no necesite distinguir el caso viejo del nuevo.
+function responsablesDeLaTarea(tarea) {
+  if (Array.isArray(tarea.responsables) && tarea.responsables.length) return tarea.responsables;
+  return [{ email: tarea.responsableEmail, nombre: tarea.responsableEmail, nivelActual: tarea.nivelActual }];
+}
+
 // `tipoAviso`: 'una_hora_antes' (hora de entrega explicita, aviso 1h antes) o
 // 'fin_de_jornada' (sin hora explicita, tarea vence hoy, aviso a las 5pm Bogota).
 //
@@ -62,21 +71,26 @@ async function nombresDePersonas(ids, responsablesPorId) {
 // requeriria modificar el flujo de Power Automate o un Bot de Teams (Bot Framework),
 // igual que los botones interactivos, ambos aplazados como fase futura.
 async function construirTarjeta(tarea, cliente, responsablesPorId, { tipoAviso } = {}) {
-  const nivelSig = nivelSiguiente(tarea.nivelActual);
-  const idsNivelSig = nivelSig ? cliente[CAMPO_IDS_POR_NIVEL[nivelSig]] || [] : [];
-  const nombresNivelSig = await nombresDePersonas(idsNivelSig, responsablesPorId);
+  const responsablesTarea = responsablesDeLaTarea(tarea);
 
-  const lineaEscalamiento = nivelSig && nombresNivelSig.length
-    ? `🪜 Si no se completa a tiempo, escala a **${nivelSig}**: ${nombresNivelSig.join(', ')}`
-    : '🪜 Este es el nivel más alto de escalamiento para este cliente.';
+  const bloquesResponsables = [];
+  for (const r of responsablesTarea) {
+    const nivelSig = nivelSiguiente(r.nivelActual);
+    const idsNivelSig = nivelSig ? cliente[CAMPO_IDS_POR_NIVEL[nivelSig]] || [] : [];
+    const nombresNivelSig = await nombresDePersonas(idsNivelSig, responsablesPorId);
+    const lineaEscalamiento = nivelSig && nombresNivelSig.length
+      ? `🪜 Si no se completa a tiempo, escala a **${nivelSig}**: ${nombresNivelSig.join(', ')}`
+      : '🪜 Este es el nivel más alto de escalamiento para este cliente.';
 
-  const responsableNombre = responsablesPorId.get(tarea.responsableId)?.nombre || tarea.responsableEmail;
+    bloquesResponsables.push(
+      { type: 'TextBlock', text: `👤 Responsable (${r.nivelActual}): @${r.nombre}`, wrap: true },
+      { type: 'TextBlock', text: lineaEscalamiento, wrap: true }
+    );
+  }
 
   const titulo = tipoAviso === 'fin_de_jornada'
     ? '⏰ Recordatorio: la tarea vence hoy (fin de la jornada laboral)'
     : '⏰ Recordatorio de tarea próxima a vencer';
-
-  const lineaResponsable = `👤 Responsable (${tarea.nivelActual}): @${responsableNombre}`;
 
   return {
     type: 'message',
@@ -91,9 +105,8 @@ async function construirTarjeta(tarea, cliente, responsablesPorId, { tipoAviso }
             { type: 'TextBlock', text: titulo, weight: 'Bolder', size: 'Medium', color: 'Attention' },
             { type: 'TextBlock', text: `📋 ${tarea.tarea}`, wrap: true, weight: 'Bolder' },
             { type: 'TextBlock', text: `🏢 Cliente: ${cliente.nombre}`, wrap: true },
-            { type: 'TextBlock', text: lineaResponsable, wrap: true },
+            ...bloquesResponsables,
             { type: 'TextBlock', text: `📅 Vence: ${formatearFechaHoraBogota(new Date(tarea.fechaLimite))}`, wrap: true },
-            { type: 'TextBlock', text: lineaEscalamiento, wrap: true },
             { type: 'TextBlock', text: 'Por favor marca la tarea como completada en Planner si ya está lista.', wrap: true, isSubtle: true },
           ],
         },
@@ -122,7 +135,6 @@ async function revisarAvisosDeVencimiento() {
     listarResponsables(),
   ]);
   const responsablesPorId = new Map(responsables.map((r) => [r.id, r]));
-  const responsablesPorEmail = new Map(responsables.map((r) => [r.email, r]));
 
   for (const doc of snapTareas.docs) {
     const tarea = doc.data();
@@ -148,11 +160,8 @@ async function revisarAvisosDeVencimiento() {
     if (!clienteSnap.exists) continue;
     const cliente = clienteSnap.data();
 
-    const responsableActual = responsablesPorEmail.get(tarea.responsableEmail);
-    const tareaConId = { ...tarea, responsableId: responsableActual?.id };
-
     try {
-      const tarjeta = await construirTarjeta(tareaConId, cliente, responsablesPorId, { tipoAviso });
+      const tarjeta = await construirTarjeta(tarea, cliente, responsablesPorId, { tipoAviso });
       await enviarAvisoTeams(tarjeta);
       await doc.ref.update({ avisoEnviado: true, avisoEnviadoEn: new Date().toISOString() });
     } catch (err) {

@@ -53,6 +53,20 @@ function resolverUrgencia(textoCrudo) {
   return null;
 }
 
+// Separa el texto crudo de "responsable" en varios nombres cuando el usuario menciona mas
+// de una persona (ej. "Natalia y Ruben", "Natalia, Ruben", "Natalia & Ruben"). Solo se
+// activa con un separador explicito (coma, "y", "&", "+"); un nombre compuesto normal
+// (ej. "Ana Maria") no trae ninguno de esos separadores, asi que queda como un solo
+// nombre. No reconoce "e" (variante de "y" antes de palabras que empiezan con "i"/"hi")
+// a proposito, para no arriesgar falsos cortes en nombres propios.
+function partirNombres(textoCrudo) {
+  if (!textoCrudo) return [];
+  return textoCrudo
+    .split(/\s*(?:,|&|\+|\by\b)\s*/i)
+    .map((n) => n.trim())
+    .filter(Boolean);
+}
+
 // Deteccion determinista (sin IA) de que el usuario quiere empezar a asignar una tarea
 // nueva, distinta a la que tiene en curso (posiblemente para otro responsable/cliente).
 const PATRON_NUEVA_TAREA = /\b(nueva tarea|otra tarea|agregar (una )?tarea|asignar (una )?(nueva|otra)|otra asignacion)\b/i;
@@ -67,4 +81,4 @@ function esRespuestaAfirmativa(textoCrudo) {
   return PATRON_AFIRMATIVO.test(limpiar(textoCrudo));
 }
 
-module.exports = { limpiar, resolverEntidad, resolverUrgencia, mencionaNuevaTarea, esRespuestaAfirmativa };
+module.exports = { limpiar, resolverEntidad, resolverUrgencia, partirNombres, mencionaNuevaTarea, esRespuestaAfirmativa };

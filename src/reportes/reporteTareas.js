@@ -23,7 +23,10 @@ function registerReportesRoute(app) {
       let query = db.collection('tareas');
 
       if (req.query.estado) query = query.where('estado', '==', req.query.estado);
-      if (req.query.responsableEmail) query = query.where('responsableEmail', '==', req.query.responsableEmail);
+      // `responsableEmails` es el arreglo con todos los responsables de la tarea (uno o
+      // mas, ver src/validacion/validarBorrador.js); array-contains encuentra la tarea sin
+      // importar si esa persona fue la primera o una adicional.
+      if (req.query.responsableEmail) query = query.where('responsableEmails', 'array-contains', req.query.responsableEmail);
       if (req.query.cliente) query = query.where('cliente', '==', req.query.cliente);
 
       const limite = Math.min(parseInt(req.query.limite, 10) || 100, 500);

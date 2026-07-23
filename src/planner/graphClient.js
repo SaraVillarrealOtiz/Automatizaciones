@@ -44,9 +44,11 @@ async function graphRequest(metodo, ruta, datos) {
     data: datos,
   };
 
-  if (metodo.toUpperCase() === 'PATCH' && datos && datos.__etag) {
+  const metodoUpper = metodo.toUpperCase();
+  if ((metodoUpper === 'PATCH' || metodoUpper === 'DELETE') && datos && datos.__etag) {
     config.headers['If-Match'] = datos.__etag;
     delete datos.__etag;
+    if (metodoUpper === 'DELETE') config.data = undefined;
   }
 
   const resp = await axios(config);

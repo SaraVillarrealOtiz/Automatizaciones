@@ -47,7 +47,7 @@ function mensajeBienvenida() {
 Para crear una tarea necesito estos datos mínimos:
 
 📝 Tarea (qué hay que hacer)
-👤 Responsable (nombre de la persona)
+👤 Responsable (nombre de la persona; si son varias, sepáralas con "y")
 🏢 Cliente
 📅 Fecha límite
 🚦 Urgencia (Urgente, Importante, Media o Baja)
@@ -61,10 +61,12 @@ function hayBorradorEnCurso(borrador) {
 }
 
 function mensajeConfirmacion(resuelto) {
+  const etiquetaResponsable = resuelto.responsables.length > 1 ? 'Responsables' : 'Responsable';
+  const nombresResponsables = resuelto.responsables.map((r) => r.nombre).join(', ');
   return `✅ *Tarea asignada correctamente*
 
 📋 ${resuelto.tarea}
-👤 Responsable: ${resuelto.responsable.nombre}
+👤 ${etiquetaResponsable}: ${nombresResponsables}
 🏢 Cliente: ${resuelto.cliente.nombre}
 📅 Vence: ${formatearFechaBogota(resuelto.fechaLimite)}
 🚦 Urgencia: ${resuelto.urgencia}`;
@@ -202,7 +204,7 @@ async function procesarMensajeEntrante(mensaje, nombreSolicitante) {
     await guardarConversacion(telefono, conversacionActualizada);
     await enviarMensajeTexto(
       telefono,
-      `⚠️ Este responsable ya tiene una tarea asignada para esa misma hora límite de entrega, es probable que no alcance a cumplir ambas. Te sugiero asignar una nueva hora para esta tarea. 📅 ¿Cuál sería la nueva fecha/hora límite?`
+      `⚠️ ${conflicto.responsableConflicto.nombre} ya tiene una tarea asignada para esa misma hora límite de entrega, es probable que no alcance a cumplir ambas. Te sugiero asignar una nueva hora para esta tarea. 📅 ¿Cuál sería la nueva fecha/hora límite?`
     );
     return;
   }
@@ -221,10 +223,15 @@ async function procesarMensajeEntrante(mensaje, nombreSolicitante) {
     telefonoSolicitante: telefono,
     nombreSolicitante: conversacionActualizada.nombreSolicitante || nombreSolicitante || null,
     tarea: resuelto.tarea,
-    responsableEmail: resuelto.responsable.email,
+    // `responsables` es la fuente completa (uno o mas); `responsableEmail`/`nivelActual`
+    // se mantienen con los datos de la primera persona por compatibilidad con consultas
+    // existentes (reportes, avisos de Teams en registros antiguos).
+    responsables: resuelto.responsables.map((r) => ({ email: r.email, nombre: r.nombre, nivelActual: r.nivelActual })),
+    responsableEmails: resuelto.responsables.map((r) => r.email),
+    responsableEmail: resuelto.responsables[0].email,
+    nivelActual: resuelto.responsables[0].nivelActual,
     clienteId: resuelto.cliente.id,
     cliente: resuelto.cliente.nombre,
-    nivelActual: resuelto.nivelActual,
     fechaLimite: resuelto.fechaLimite.toISOString(),
     horaLimiteExplicita: resuelto.horaLimiteExplicita,
     tiempoEstimado: resuelto.tiempoEstimadoMinutos,

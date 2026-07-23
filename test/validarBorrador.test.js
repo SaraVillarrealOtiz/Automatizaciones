@@ -38,12 +38,13 @@ test('borrador completo y válido se resuelve correctamente', () => {
   };
   const resultado = validarBorrador(crudo, { responsables, clientes });
   assert.strictEqual(resultado.valido, true);
-  assert.strictEqual(resultado.resuelto.responsable.id, 'r1');
+  assert.strictEqual(resultado.resuelto.responsables.length, 1);
+  assert.strictEqual(resultado.resuelto.responsables[0].id, 'r1');
   assert.strictEqual(resultado.resuelto.cliente.id, 'c1');
   // "alta" es alias heredado de "Urgente" (ver src/interpretacion/normalizarTexto.js)
   assert.strictEqual(resultado.resuelto.urgencia, 'Urgente');
   // "juan" es auxiliarId del cliente "acme" -> nivel inicial Auxiliar
-  assert.strictEqual(resultado.resuelto.nivelActual, 'Auxiliar');
+  assert.strictEqual(resultado.resuelto.responsables[0].nivelActual, 'Auxiliar');
 });
 
 test('el nivel se determina segun el rol de esa persona para ese cliente en particular', () => {
@@ -59,7 +60,7 @@ test('el nivel se determina segun el rol de esa persona para ese cliente en part
   const resultado = validarBorrador(crudo, { responsables, clientes });
   assert.strictEqual(resultado.valido, true);
   // "maria" es analistaId del cliente "acme" -> nivel inicial Analista
-  assert.strictEqual(resultado.resuelto.nivelActual, 'Analista');
+  assert.strictEqual(resultado.resuelto.responsables[0].nivelActual, 'Analista');
 });
 
 test('persona valida pero que no pertenece a la cadena de ese cliente es rechazada', () => {
@@ -105,7 +106,7 @@ test('cualquiera de varias personas listadas en un mismo rol es valida', () => {
     };
     const resultado = validarBorrador(crudo, { responsables, clientes: clienteConDosSupervisores });
     assert.strictEqual(resultado.valido, true);
-    assert.strictEqual(resultado.resuelto.nivelActual, 'Supervisor');
+    assert.strictEqual(resultado.resuelto.responsables[0].nivelActual, 'Supervisor');
   }
 });
 
@@ -171,4 +172,75 @@ test('fecha límite ya vencida es rechazada', () => {
 test('combinarBorradorCrudo no sobreescribe con null y preserva campos previos', () => {
   const combinado = combinarBorradorCrudo({ tarea: 'A', cliente: 'acme' }, { tarea: null, responsable: 'juan' });
   assert.deepStrictEqual(combinado, { tarea: 'A', cliente: 'acme', responsable: 'juan' });
+});
+
+test('un responsable mal escrito se avisa de inmediato, sin esperar a que el borrador este completo', () => {
+  // Solo se ha dado "tarea" y "responsable" (con un typo) -- aun faltan cliente, fecha,
+  // urgencia y descripcion, pero el error de responsable debe salir YA, no al final.
+  const resultado = validarBorrador({ tarea: 'Enviar factura', responsable: 'natilia' }, { responsables, clientes });
+  assert.strictEqual(resultado.valido, false);
+  assert.strictEqual(resultado.campoPendiente, 'responsable');
+  assert.match(resultado.mensaje, /No reconozco "natilia"/);
+});
+
+test('un cliente mal escrito se avisa de inmediato, sin esperar a que el borrador este completo', () => {
+  const resultado = validarBorrador({ tarea: 'Enviar factura', cliente: 'acmee' }, { responsables, clientes });
+  assert.strictEqual(resultado.valido, false);
+  assert.strictEqual(resultado.campoPendiente, 'cliente');
+  assert.match(resultado.mensaje, /No reconozco "acmee"/);
+});
+
+test('dos responsables separados por "y" quedan ambos asignados si los dos pertenecen a la cadena del cliente', () => {
+  const clienteConAmbosRoles = [
+    { id: 'c4', nombre: 'Delta SAS', alias: ['delta'], plannerGroupId: 'g4', plannerPlanId: 'p4', bucketInicioId: 'b4', auxiliarIds: ['r1'], analistaIds: ['r2'], supervisorIds: [] },
+  ];
+  const crudo = {
+    tarea: 'Planilla de seguridad social',
+    responsable: 'juan y maria',
+    cliente: 'delta',
+    fechaLimite: 'mañana',
+    urgencia: 'media',
+    descripcion: 'x',
+  };
+  const resultado = validarBorrador(crudo, { responsables, clientes: clienteConAmbosRoles });
+  assert.strictEqual(resultado.valido, true);
+  assert.strictEqual(resultado.resuelto.responsables.length, 2);
+  assert.deepStrictEqual(resultado.resuelto.responsables.map((r) => r.id), ['r1', 'r2']);
+  assert.strictEqual(resultado.resuelto.responsables[0].nivelActual, 'Auxiliar');
+  assert.strictEqual(resultado.resuelto.responsables[1].nivelActual, 'Analista');
+});
+
+test('si uno de los dos responsables mencionados no existe, se rechaza nombrando a esa persona', () => {
+  const crudo = {
+    tarea: 'Planilla de seguridad social',
+    responsable: 'juan y natilia',
+    cliente: 'acme',
+    fechaLimite: 'mañana',
+    urgencia: 'media',
+    descripcion: 'x',
+  };
+  const resultado = validarBorrador(crudo, { responsables, clientes });
+  assert.strictEqual(resultado.valido, false);
+  assert.strictEqual(resultado.campoPendiente, 'responsable');
+  assert.match(resultado.mensaje, /No reconozco "natilia"/);
+});
+
+test('si uno de los dos responsables no pertenece a la cadena de ese cliente, se rechaza', () => {
+  // "acme": juan es auxiliar, maria es analista -> ambos SI pertenecen. Probamos con un
+  // cliente donde solo uno de los dos esta en la cadena.
+  const clienteSoloConJuan = [
+    { id: 'c5', nombre: 'Epsilon SAS', alias: ['epsilon'], plannerGroupId: 'g5', plannerPlanId: 'p5', bucketInicioId: 'b5', auxiliarIds: ['r1'], analistaIds: [], supervisorIds: [] },
+  ];
+  const crudo = {
+    tarea: 'Planilla de seguridad social',
+    responsable: 'juan y maria',
+    cliente: 'epsilon',
+    fechaLimite: 'mañana',
+    urgencia: 'media',
+    descripcion: 'x',
+  };
+  const resultado = validarBorrador(crudo, { responsables, clientes: clienteSoloConJuan });
+  assert.strictEqual(resultado.valido, false);
+  assert.strictEqual(resultado.campoPendiente, 'responsable');
+  assert.match(resultado.mensaje, /Maria Gomez/);
 });

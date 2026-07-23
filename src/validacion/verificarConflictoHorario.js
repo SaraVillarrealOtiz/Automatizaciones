@@ -7,33 +7,38 @@ const { graphRequest } = require('../planner/graphClient');
 // nunca se revisa. El conflicto se busca contra CUALQUIER cliente de ese responsable (una
 // persona solo tiene una agenda), y solo contra tareas que en Planner aun no esten
 // completadas (percentComplete < 100) — se consulta Planner en vivo porque Firestore no
-// sincroniza ese estado.
+// sincroniza ese estado. Si la tarea nueva tiene mas de un responsable (ver
+// src/validacion/validarBorrador.js), se revisa a CADA UNO por separado — protege la
+// agenda de cada persona individualmente, no solo la del primero mencionado.
 async function verificarConflictoHorario({ resuelto }) {
   if (!resuelto.horaLimiteExplicita) {
     return { conflicto: false };
   }
 
   const db = getDb();
-  const candidatos = await db
-    .collection('tareas')
-    .where('responsableEmail', '==', resuelto.responsable.email)
-    .where('fechaLimite', '==', resuelto.fechaLimite.toISOString())
-    .where('estado', '==', 'creada')
-    .get();
 
-  for (const doc of candidatos.docs) {
-    const tareaExistente = doc.data();
-    if (!tareaExistente.plannerTaskId) continue;
+  for (const responsable of resuelto.responsables) {
+    const candidatos = await db
+      .collection('tareas')
+      .where('responsableEmails', 'array-contains', responsable.email)
+      .where('fechaLimite', '==', resuelto.fechaLimite.toISOString())
+      .where('estado', '==', 'creada')
+      .get();
 
-    let tareaPlanner;
-    try {
-      tareaPlanner = await graphRequest('GET', `/planner/tasks/${tareaExistente.plannerTaskId}`);
-    } catch {
-      continue; // la tarea ya no existe en Planner, no cuenta como conflicto
-    }
+    for (const doc of candidatos.docs) {
+      const tareaExistente = doc.data();
+      if (!tareaExistente.plannerTaskId) continue;
 
-    if (tareaPlanner.percentComplete < 100) {
-      return { conflicto: true, tareaExistente: { id: doc.id, ...tareaExistente } };
+      let tareaPlanner;
+      try {
+        tareaPlanner = await graphRequest('GET', `/planner/tasks/${tareaExistente.plannerTaskId}`);
+      } catch {
+        continue; // la tarea ya no existe en Planner, no cuenta como conflicto
+      }
+
+      if (tareaPlanner.percentComplete < 100) {
+        return { conflicto: true, responsableConflicto: responsable, tareaExistente: { id: doc.id, ...tareaExistente } };
+      }
     }
   }
 

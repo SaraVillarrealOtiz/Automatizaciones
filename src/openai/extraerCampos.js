@@ -8,7 +8,7 @@ const ESQUEMA_CAMPOS = {
     type: 'object',
     properties: {
       tarea: { type: ['string', 'null'], description: 'Titulo/nombre corto de la tarea (campo 📝 Tarea). Si el usuario no da un titulo explicito pero si describe la tarea, genera aqui un titulo corto (maximo ~8 palabras) que resuma esa descripcion; deja null solo si no hay ni titulo ni descripcion suficiente para resumir.' },
-      responsable: { type: ['string', 'null'], description: 'Nombre propio de la PERSONA a quien se le asigna directamente la tarea (campo 👤 Responsable). Debe ser un nombre de persona, nunca un cargo (no "el analista", no "el auxiliar"): el sistema determina el cargo/nivel de esa persona automaticamente segun el cliente.' },
+      responsable: { type: ['string', 'null'], description: 'Nombre propio de la PERSONA (o personas) a quien se le asigna directamente la tarea (campo 👤 Responsable). Debe ser un nombre de persona, nunca un cargo (no "el analista", no "el auxiliar"): el sistema determina el cargo/nivel de esa persona automaticamente segun el cliente. Si el usuario menciona mas de una persona (ej. "Natalia y Ruben"), incluye todos los nombres tal como los dijo, unidos igual que en el mensaje original (no elijas solo uno).' },
       cliente: { type: ['string', 'null'], description: 'Cliente al que pertenece la tarea (campo 🏢 Cliente)' },
       fechaLimite: { type: ['string', 'null'], description: 'Fecha limite mencionada, en el texto original tal como la dijo el usuario (campo 📅 Fecha limite). No conviertas formato aqui.' },
       tiempoEstimado: { type: ['string', 'null'], description: 'Duracion estimada de la tarea, texto original (campo ⏱️ Tiempo estimado). Distinto de la fecha limite.' },
@@ -37,6 +37,8 @@ El equipo suele usar esta plantilla con emojis (puede venir completa, parcial, o
 El campo "Responsable" es el NOMBRE PROPIO de la persona a quien se le asigna la tarea
 (ej. "Sofía", "Natalia", "Jose Bueno"), nunca un cargo genérico. El sistema determina
 automáticamente si esa persona es Auxiliar, Analista o Supervisor según el cliente.
+Puede haber MÁS DE UNA persona responsable (ej. "Natalia y Ruben", "Sofía, Jose"): en ese
+caso incluye todos los nombres mencionados, no selecciones solo uno.
 
 Reglas estrictas:
 - Extrae SOLO lo que el usuario dijo explícitamente. Si un campo no se menciona (ni con la etiqueta ni de forma implícita clara), devuelve null para ese campo. NUNCA inventes ni infieras un valor razonable "por defecto".
