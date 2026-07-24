@@ -14,6 +14,7 @@ const { crearTareaPlanner } = require('./src/planner/crearTarea');
 const { crearTarea, registrarEvento } = require('./src/firestore/tareas');
 const { registerReportesRoute } = require('./src/reportes/reporteTareas');
 const { iniciarProgramadorDeAvisos } = require('./src/teams/avisosVencimiento');
+const { iniciarProgramadorDeCambiosPlanner } = require('./src/teams/avisosCambiosPlanner');
 
 // Create an Express app
 const app = express();
@@ -285,4 +286,5 @@ registerReportesRoute(app);
 app.listen(port, () => {
   console.log(`\nListening on port ${port}\n`);
   iniciarProgramadorDeAvisos();
+  iniciarProgramadorDeCambiosPlanner();
 });

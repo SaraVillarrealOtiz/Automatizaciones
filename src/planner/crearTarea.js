@@ -79,4 +79,4 @@ async function crearTareaPlanner({ resuelto }) {
   };
 }
 
-module.exports = { crearTareaPlanner, resolverUsuarioAAD, asegurarMiembroDelGrupo };
+module.exports = { crearTareaPlanner, resolverUsuarioAAD, asegurarMiembroDelGrupo, PRIORIDAD_PLANNER_POR_URGENCIA };
